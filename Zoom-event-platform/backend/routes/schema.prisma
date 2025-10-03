@@ -1,0 +1,154 @@
+// This is your Prisma schema file for PostgreSQL
+// Learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 Int           @id @default(autoincrement())
+  email              String        @unique
+  password           String?
+  name               String
+  avatar             String?
+  isEmailVerified    Boolean       @default(false)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  
+  // Relations
+  events             Event[]
+  attendeeRecords    Attendee[]
+  resources          Resource[]
+  subscription       Subscription?
+  
+  @@map("User")
+}
+
+model Event {
+  id               Int        @id @default(autoincrement())
+  title            String
+  description      String?
+  status           String     @default("scheduled") // scheduled, live, completed, cancelled
+  startTime        DateTime
+  endTime          DateTime
+  maxAttendees     Int        @default(100)
+  
+  // Zoom Integration Fields
+  zoomMeetingId    String?    @unique
+  zoomJoinUrl      String?
+  zoomStartUrl     String?
+  zoomPassword     String?
+  actualStartTime  DateTime?
+  actualEndTime    DateTime?
+  
+  // Relations
+  organizerId      Int
+  organizer        User       @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  
+  attendees        Attendee[]
+  sessions         Session[]
+  analytics        Analytics[]
+  resources        Resource[]
+  
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  
+  @@map("Event")
+}
+
+model Attendee {
+  id             Int       @id @default(autoincrement())
+  email          String
+  name           String
+  status         String    @default("registered") // registered, joined, left
+  joinedAt       DateTime?
+  leftAt         DateTime?
+  
+  // Relations
+  eventId        Int
+  event          Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  
+  @@unique([email, eventId])
+  @@map("Attendee")
+}
+
+model Session {
+  id           Int      @id @default(autoincrement())  
+  title        String
+  description  String?
+  startTime    DateTime
+  endTime      DateTime  
+  
+  // Relations
+  eventId      Int
+  event        Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  attendees    Attendee[]
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  @@map("Session")
+}
+
+model Analytics {
+  id         Int      @id @default(autoincrement())
+  metricType String   // meeting_started, participant_joined, etc.
+  value      Int      // count or duration
+  timestamp  DateTime @default(now())
+  
+  // Relations
+  eventId    Int
+  event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  
+  @@map("Analytics")
+}
+
+model Resource {
+  id           Int      @id @default(autoincrement())
+  title        String
+  description  String?
+  filename     String
+  originalName String
+  size         Int
+  mimetype     String
+  url          String
+  
+  // Relations
+  eventId      Int?
+  event        Event?   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  
+  uploadedBy   Int
+  uploader     User     @relation(fields: [uploadedBy], references: [id], onDelete: Cascade)
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  @@map("Resource")
+}
+
+model Subscription {
+  id             Int       @id @default(autoincrement())
+  plan           String    @default("trial") // trial, standard, pro
+  status         String    @default("active") // active, cancelled, expired
+  expiresAt      DateTime?
+  eventsLimit    Int       @default(3)
+  attendeesLimit Int       @default(12)
+  eventsUsed     Int       @default(0)
+  
+  // Relations
+  userId         Int       @unique
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  
+  @@map("Subscription")
+}
