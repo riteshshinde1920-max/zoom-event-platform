@@ -1,0 +1,19 @@
+{
+  "name": "zoom-event-platform",
+  "version": "1.0.0",
+  "description": "Virtual Event Platform with Zoom Integration",
+  "main": "server.js",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "cd backend && npm run dev",
+    "client": "cd frontend && npm start",
+    "build": "cd frontend && npm run build",
+    "install-deps": "npm install && cd backend && npm install && cd ../frontend && npm install"
+  },
+  "keywords": ["zoom", "virtual-events", "meetings", "platform"],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^7.6.0"
+  }
+}

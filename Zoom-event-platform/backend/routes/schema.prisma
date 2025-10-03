@@ -1,0 +1,172 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String   @id @default(cuid())
+  email             String   @unique
+  password          String?
+  firstName         String
+  lastName          String
+  avatar            String?
+  isEmailVerified   Boolean  @default(false)
+  subscriptionTier  String   @default("TRIAL") // TRIAL, STANDARD, PRO
+  subscriptionStatus String  @default("ACTIVE") // ACTIVE, CANCELED, PAST_DUE, INCOMPLETE
+  stripeCustomerId  String?
+  zoomUserId        String?
+  zoomAccessToken   String?
+  zoomRefreshToken  String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  events            Event[]
+  analytics         Analytics[]
+  subscriptions     Subscription[]
+  resources         Resource[]
+
+  @@map("users")
+}
+
+model Event {
+  id                String   @id @default(cuid())
+  title             String
+  description       String?
+  type              String   @default("MEETING") // MEETING, WEBINAR, WORKSHOP, CONFERENCE, SUMMIT
+  status            String   @default("SCHEDULED") // DRAFT, SCHEDULED, LIVE, COMPLETED, CANCELED
+  startTime         DateTime
+  endTime           DateTime
+  timezone          String   @default("UTC")
+  maxAttendees      Int      @default(100)
+  currentAttendees  Int      @default(0)
+  isRecording       Boolean  @default(false)
+  recordingUrl      String?
+  dashboardTemplate String   @default("CLASSIC") // CLASSIC, ANALYTICS_HEAVY, ATTENDEE_FOCUSED, RESOURCE_CENTER, REALTIME_MONITOR
+  settings          String?  // JSON string for event-specific settings
+  
+  // Zoom Integration
+  zoomMeetingId     String?
+  zoomMeetingUrl    String?
+  zoomPassword      String?
+  zoomHostKey       String?
+  
+  userId            String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attendees         Attendee[]
+  analytics         Analytics[]
+  resources         Resource[]
+  sessions          Session[]
+
+  @@map("events")
+}
+
+model Attendee {
+  id                String   @id @default(cuid())
+  email             String
+  firstName         String
+  lastName          String
+  registrationTime  DateTime @default(now())
+  checkInTime       DateTime?
+  checkOutTime      DateTime?
+  status            String   @default("REGISTERED") // REGISTERED, CONFIRMED, CHECKED_IN, NO_SHOW, CANCELED
+  joinUrl           String?
+  
+  eventId           String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  event             Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([email, eventId])
+  @@map("attendees")
+}
+
+model Session {
+  id                String   @id @default(cuid())
+  title             String
+  description       String?
+  startTime         DateTime
+  endTime           DateTime
+  type              String   @default("PRESENTATION") // PRESENTATION, WORKSHOP, PANEL, NETWORKING, BREAKOUT
+  speakerName       String?
+  speakerEmail      String?
+  maxAttendees      Int?
+  
+  eventId           String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  event             Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Analytics {
+  id                String   @id @default(cuid())
+  eventId           String
+  userId            String
+  metrics           String   // JSON string for various metrics
+  recordedAt        DateTime @default(now())
+  
+  // Relations
+  event             Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("analytics")
+}
+
+model Resource {
+  id                String   @id @default(cuid())
+  title             String
+  description       String?
+  fileName          String
+  originalName      String
+  fileSize          Int
+  mimeType          String
+  downloadUrl       String
+  downloadCount     Int      @default(0)
+  
+  eventId           String?
+  userId            String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  event             Event?   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("resources")
+}
+
+model Subscription {
+  id                String   @id @default(cuid())
+  userId            String
+  tier              String   // TRIAL, STANDARD, PRO
+  status            String   // ACTIVE, CANCELED, PAST_DUE, INCOMPLETE
+  stripeSubscriptionId String?
+  stripePriceId     String?
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  canceledAt        DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
